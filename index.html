@@ -115,6 +115,18 @@
   .review .o{ background:var(--ok); } .review .x{ background:var(--ng); }
   .review small{ display:block; font-size:12px; margin-top:3px; line-height:1.3; text-align:left; }
 
+  /* ===== りれき ===== */
+  .histbtn{ border:2px solid #fff; background:transparent; color:#fff; border-radius:999px; padding:5px 12px; font-weight:700; font-size:14px; white-space:nowrap; }
+  .hist{ width:100%; border-collapse:collapse; margin:14px 0 6px; font-variant-numeric:tabular-nums; text-align:left; }
+  .hist th{ font-size:13px; color:#7c7468; font-weight:700; padding:6px 8px; border-bottom:2px solid var(--line); }
+  .hist td{ padding:9px 8px; border-bottom:1px solid var(--line); font-size:16px; }
+  .hist td.num{ text-align:right; white-space:nowrap; }
+  .hist .bar{ display:inline-block; height:10px; border-radius:5px; background:var(--ok); vertical-align:middle; margin-left:6px; }
+  .hist .mid{ color:#b07a00; font-size:12px; }
+  .histsum{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:10px 0 0; }
+  .histsum div{ background:var(--ground); border-radius:14px; padding:8px 14px; font-size:14px; }
+  .histsum b{ display:block; font-size:22px; }
+
   @media (max-width:620px){
     .play{ grid-template-columns:1fr; gap:14px; }
     .cardwrap{ max-width:300px; margin:0 auto; }
@@ -129,6 +141,7 @@
 <header>
   <div class="hwrap">
     <h1><small>カードを よく みて こたえよう</small>ポケポケ クイズ</h1>
+    <button class="histbtn" id="histBtn">📜 りれき</button>
     <span class="stamp" id="stamp"></span>
   </div>
 </header>
@@ -246,8 +259,12 @@ function makeQuestion(used, kindsOn){
 
 /* ---------- きろく ---------- */
 const STORE = "pokepoke-quiz-v1";
-let rec = { total:0, correct:0, kinds:Object.keys(KINDS) };
+/* history: 1かい（10もん）ごとの きろく。あたらしい じゅんに HIST_MAX けん まで のこす
+   { t:はじめた じこく（ミリびょう）, n:こたえた かず, ok:せいかいの かず } */
+const HIST_MAX = 20;
+let rec = { total:0, correct:0, kinds:Object.keys(KINDS), history:[] };
 try { rec = Object.assign(rec, JSON.parse(localStorage.getItem(STORE)) || {}); } catch (e) {}
+if (!Array.isArray(rec.history)) rec.history = [];
 function save(){ try { localStorage.setItem(STORE, JSON.stringify(rec)); } catch (e) {} }
 function drawStamp(){ $("#stamp").textContent = `🌟 せいかい ${rec.correct}もん`; }
 
@@ -285,7 +302,7 @@ function drawStart(){
 
 function startRound(){
   const used = new Set(), on = new Set(rec.kinds);
-  round = { qs:Array.from({ length:PER_ROUND }, () => makeQuestion(used, on)), i:0, res:[] };
+  round = { qs:Array.from({ length:PER_ROUND }, () => makeQuestion(used, on)), i:0, res:[], entry:null };
   drawQ();
 }
 
@@ -318,7 +335,15 @@ function drawQ(){
 
 function answer(i){
   const Q = round.qs[round.i], ok = Q.choices[i] === Q.ans, rightI = Q.choices.indexOf(Q.ans);
-  round.res[round.i] = ok; rec.total++; if (ok) rec.correct++; save(); drawStamp();
+  round.res[round.i] = ok; rec.total++; if (ok) rec.correct++;
+  // さいしょに こたえた ときに りれきを 1けん つくり、こたえる たびに ふやす（とちゅうで やめても のこる）
+  if (!round.entry) {
+    round.entry = { t:Date.now(), n:0, ok:0 };
+    rec.history.unshift(round.entry);
+    rec.history = rec.history.slice(0, HIST_MAX);
+  }
+  round.entry.n++; if (ok) round.entry.ok++;
+  save(); drawStamp();
   document.querySelectorAll(".choice").forEach((b, k) => {
     b.disabled = true;
     if (k === rightI) b.classList.add("right"); else if (k === i) b.classList.add("wrong");
@@ -337,6 +362,7 @@ function answer(i){
 }
 
 function drawResult(){
+  round.done = true;
   const n = round.res.filter(Boolean).length;
   const face = n === PER_ROUND ? "👑" : n >= 8 ? "🌟" : n >= 5 ? "😊" : "🌱";
   $("#main").innerHTML = `
@@ -353,6 +379,46 @@ function drawResult(){
   $("#again").onclick = startRound;
   $("#home").onclick = drawStart;
 }
+
+const WD = ["にち","げつ","か","すい","もく","きん","ど"];
+function fmtTime(t){
+  const d = new Date(t), p = n => String(n).padStart(2, "0");
+  return `${d.getMonth() + 1}/${d.getDate()}（${WD[d.getDay()]}） ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function drawHistory(){
+  const H = rec.history;
+  const sumN = H.reduce((s, h) => s + h.n, 0), sumOk = H.reduce((s, h) => s + h.ok, 0);
+  $("#main").innerHTML = `
+    <div class="panel">
+      <div class="big">📜</div>
+      <h2>こたえた りれき</h2>
+      <p>あたらしい じゅんに ${HIST_MAX}かい ぶん まで のこるよ。</p>
+      ${H.length ? `
+        <div class="histsum">
+          <div>かいすう<b>${H.length}かい</b></div>
+          <div>こたえた かず<b>${sumN}もん</b></div>
+          <div>せいかい<b>${sumOk}もん</b></div>
+        </div>
+        <table class="hist">
+          <thead><tr><th>ひにち・じかん</th><th class="num">こたえた かず</th><th class="num">せいかい</th></tr></thead>
+          <tbody>
+            ${H.map(h => `<tr>
+              <td>${fmtTime(h.t)}${h.n < PER_ROUND ? ' <span class="mid">（とちゅう）</span>' : ""}</td>
+              <td class="num">${h.n}もん</td>
+              <td class="num">${h.ok}もん<span class="bar" style="width:${Math.round(h.ok / PER_ROUND * 60)}px"></span></td>
+            </tr>`).join("")}
+          </tbody>
+        </table>` : `<p style="margin:18px 0">まだ りれきは ないよ。クイズに ちょうせん してみよう！</p>`}
+      <button class="next" id="histBack">もどる</button>
+      ${H.length ? '<button class="next sub" id="histClear">りれきを けす</button>' : ""}
+    </div>`;
+  $("#histBack").onclick = drawStart;
+  if (H.length) $("#histClear").onclick = () => {
+    if (confirm("りれきを ぜんぶ けしますか？")) { rec.history = []; save(); drawHistory(); }
+  };
+}
+$("#histBtn").onclick = () => { if (!round || round.done || !round.entry || confirm("クイズを とちゅうで やめて りれきを みますか？")) { round = null; drawHistory(); } };
 
 drawStamp();
 drawStart();
