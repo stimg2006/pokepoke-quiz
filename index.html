@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#e3350d">
+<meta name="robots" content="noindex, nofollow">
+<title>ポケポケ クイズ</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%23fff' stroke='%23222' stroke-width='6'/><path d='M4 50a46 46 0 0 1 92 0z' fill='%23e3350d' stroke='%23222' stroke-width='6'/><circle cx='50' cy='50' r='13' fill='%23fff' stroke='%23222' stroke-width='6'/></svg>">
+<style>
+  :root{
+    --ink:#23232e;
+    --red:#e3350d;
+    --red-dark:#b12a0a;
+    --ground:#f4f1ec;
+    --paper:#ffffff;
+    --line:#e2ddd4;
+    --ok:#2f9e58;
+    --ng:#e0485f;
+    --yellow:#ffcb05;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; min-height:100vh; background:var(--ground); color:var(--ink);
+    font-family:"UD デジタル教科書体 NK-R","UD デジタル教科書体 N-R","BIZ UDPGothic",
+                "Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
+    word-break:keep-all; overflow-wrap:anywhere;
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  button{ font:inherit; cursor:pointer; color:inherit; touch-action:manipulation; }
+  button:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+
+  /* ===== あたま（モンスターボールの いろ） ===== */
+  header{
+    background:var(--red); color:#fff;
+    padding:max(12px, env(safe-area-inset-top, 0px)) 16px 12px;
+    border-bottom:6px solid var(--ink);
+    position:relative;
+  }
+  header::after{
+    content:""; position:absolute; left:50%; bottom:-19px; transform:translateX(-50%);
+    width:32px; height:32px; border-radius:50%; background:#fff; border:6px solid var(--ink);
+  }
+  .hwrap{ max-width:720px; margin:0 auto; display:flex; align-items:center; gap:10px; }
+  header h1{ flex:1; margin:0; font-size:22px; letter-spacing:.08em; }
+  header h1 small{ display:block; font-size:12px; opacity:.85; letter-spacing:.12em; }
+  .stamp{ background:#fff; color:var(--red-dark); border-radius:999px; padding:5px 12px; font-weight:700; font-size:14px; white-space:nowrap; }
+
+  main{ max-width:720px; margin:0 auto; padding:28px 16px 30px; }
+
+  /* ===== すすみぐあい ===== */
+  .dots{ display:flex; gap:6px; justify-content:center; margin:0 0 12px; }
+  .dots i{ width:22px; height:22px; border-radius:50%; background:#ddd6cb; border:3px solid transparent; }
+  .dots i.now{ border-color:var(--red); background:#fff; }
+  .dots i.ok{ background:var(--ok); }
+  .dots i.ng{ background:var(--ng); }
+
+  /* ===== もんだい ===== */
+  .qhead{ display:flex; align-items:center; gap:10px; margin:0 0 10px; }
+  .kind{ font-size:13px; font-weight:700; color:#fff; background:var(--ink); border-radius:999px; padding:3px 12px; }
+  .qno{ font-size:13px; color:#7c7468; }
+  .speak{ margin-left:auto; border:none; background:#fff; border-radius:999px; padding:6px 12px; font-size:14px; box-shadow:0 2px 0 var(--line); }
+  .q{ font-size:24px; font-weight:700; line-height:1.6; margin:0 0 12px; text-align:center; text-wrap:balance; }
+
+  .play{ display:grid; grid-template-columns:minmax(0, 330px) minmax(0, 1fr); gap:20px; align-items:start; }
+  .cardwrap{ position:relative; width:100%; aspect-ratio:5/7; border-radius:14px; overflow:hidden; background:#ddd; box-shadow:0 6px 18px rgba(0,0,0,.18); }
+  .cardwrap img{ width:100%; height:100%; display:block; }
+  .mask{
+    position:absolute; border-radius:6px;
+    background:repeating-linear-gradient(45deg, #23232e 0 8px, #3a3a48 8px 16px);
+    border:2px solid var(--yellow);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--yellow); font-weight:700; font-size:clamp(14px, 4vw, 22px);
+    transition:opacity .35s;
+  }
+  .mask.open{ opacity:0; }
+  .hl{ position:absolute; border:3px solid var(--yellow); border-radius:6px; box-shadow:0 0 0 3px rgba(255,203,5,.35); pointer-events:none; }
+
+  .choices{ display:grid; gap:10px; }
+  .choice{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+    font-size:21px; padding:13px 16px; background:var(--paper); color:var(--ink);
+    border:3px solid var(--line); border-radius:16px; transition:transform .08s;
+  }
+  .choice:hover:not(:disabled){ transform:translateY(-2px); border-color:var(--red); }
+  .choice .mk{ flex:none; width:36px; height:36px; border-radius:50%; background:var(--red); color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .choice .dot{ flex:none; width:22px; height:22px; border-radius:50%; border:2px solid rgba(0,0,0,.25); }
+  .choice:disabled{ cursor:default; opacity:.45; }
+  .choice.right{ opacity:1; border-color:var(--ok); background:#e9f8ef; }
+  .choice.right .mk{ background:var(--ok); }
+  .choice.wrong{ opacity:1; border-color:var(--ng); background:#fdecef; }
+  .choice.wrong .mk{ background:var(--ng); }
+
+  .judge{ text-align:center; font-size:30px; font-weight:700; margin:14px 0 4px; }
+  .judge.ok{ color:var(--ok); } .judge.ng{ color:var(--ng); }
+  .answer{ text-align:center; font-size:18px; margin:0 0 6px; }
+  .next{
+    display:block; margin:14px auto 0; border:none; background:var(--red); color:#fff;
+    font-size:21px; font-weight:700; padding:12px 34px; border-radius:999px; box-shadow:0 5px 0 var(--red-dark);
+  }
+  .next:active{ transform:translateY(3px); box-shadow:0 2px 0 var(--red-dark); }
+  .next.sub{ background:#fff; color:var(--red); border:2px solid var(--red); box-shadow:0 5px 0 var(--line); font-size:17px; padding:10px 26px; }
+
+  /* ===== スタート・けっか ===== */
+  .panel{ background:var(--paper); border-radius:24px; padding:24px 20px; text-align:center; box-shadow:0 6px 0 var(--line); }
+  .panel .big{ font-size:76px; line-height:1.1; }
+  .panel h2{ margin:6px 0; font-size:26px; }
+  .panel p{ margin:6px 0; color:#6d665c; font-size:16px; line-height:1.7; }
+  .kinds{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:12px 0 4px; }
+  .kinds label{ font-size:14px; background:var(--ground); border-radius:999px; padding:6px 12px; display:flex; gap:6px; align-items:center; }
+  .review{ list-style:none; margin:16px 0 0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:10px; }
+  .review li{ position:relative; }
+  .review img{ width:100%; border-radius:8px; display:block; }
+  .review span{ position:absolute; top:-6px; left:-6px; width:28px; height:28px; border-radius:50%; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .review .o{ background:var(--ok); } .review .x{ background:var(--ng); }
+  .review small{ display:block; font-size:12px; margin-top:3px; line-height:1.3; text-align:left; }
+
+  @media (max-width:620px){
+    .play{ grid-template-columns:1fr; gap:14px; }
+    .cardwrap{ max-width:300px; margin:0 auto; }
+    .q{ font-size:20px; }
+    .choice{ font-size:18px; padding:11px 14px; }
+    .choice .mk{ width:32px; height:32px; }
+    header h1{ font-size:19px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <h1><small>カードを よく みて こたえよう</small>ポケポケ クイズ</h1>
+    <span class="stamp" id="stamp"></span>
+  </div>
+</header>
+<main id="main"></main>
+
+<script src="data.js"></script>
+<script>
+/* ============================================================
+   データ（data.js）
+   CARDS: [id, なまえ, タイプ番号, タイプに じしんが あるか, だんかい番号(-1=ふめい), しんかまえ,
+           なまえの わく, HP, HPの わく, しんかまえの わく, [[ワザ名, ワザ名の わく, いりょく, いりょくの わく, ワザ名に じしんが あるか], ...]]
+   わく は カード（500×700）の うえでの [x0, y0, x1, y1]
+   ============================================================ */
+const TYPES = ["くさ","ほのお","みず","かみなり","エスパー","かくとう","あく","はがね","ドラゴン","むしょく"];
+const TYPE_COLOR = ["#43a047","#ef5b2a","#2f8fe0","#f5c518","#a45cc4","#c26a2c","#2f4858","#8f9aa3","#b89a2c","#e7e5e0"];
+const STAGES = ["たね","1しんか","2しんか"];
+const TYPE_BOX = [434, 24, 480, 66];
+const STAGE_BOX = [10, 24, 90, 62];
+const PORTRAIT_BOX = [10, 54, 92, 116];
+const PER_ROUND = 10;
+/* もんだいの しゅるいと わりあい（％） */
+const KINDS = {
+  name:  { w:45, label:"なまえ" },
+  hp:    { w:10, label:"HP" },
+  type:  { w:10, label:"タイプ" },
+  stage: { w:10, label:"たね・しんか" },
+  atk:   { w:10, label:"ワザの なまえ" },
+  dmg:   { w:10, label:"ワザの いりょく" },
+  evo:   { w:5,  label:"しんかまえ" },
+};
+
+const C = CARDS.map(r => ({ id:r[0], name:r[1], type:r[2], tsure:!!r[3], stage:r[4], evo:r[5], nbox:r[6], hp:r[7], hbox:r[8], ebox:r[9],
+  atks:(r[10] || []).map(a => ({ name:a[0], nbox:a[1], dmg:a[2], dbox:a[3], sure:!!a[4] })) }));
+
+/* しゅるいごとに つかえる カード（と ワザ）の いちらん */
+const POOL = { name:[], hp:[], type:[], stage:[], atk:[], dmg:[], evo:[] };
+C.forEach(c => {
+  if (c.nbox) POOL.name.push({ c });
+  if (c.hp && c.hbox) POOL.hp.push({ c });
+  if (c.tsure) POOL.type.push({ c });
+  if (c.stage >= 0) POOL.stage.push({ c });
+  if (c.evo && c.ebox) POOL.evo.push({ c });
+  c.atks.forEach(a => {
+    if (a.name && a.sure && a.nbox) POOL.atk.push({ c, a });
+    if (a.dmg && a.dbox) POOL.dmg.push({ c, a });
+  });
+});
+const ALL_NAMES = [...new Set(C.map(c => c.name))];
+const ALL_ATKS = [...new Set(POOL.atk.map(p => p.a.name))];
+const HPS = [...new Set(C.map(c => c.hp).filter(Boolean))].sort((a, b) => a - b);
+const isEx = n => /ex$/.test(n);
+const baseOf = n => n.replace(/ex$/, "");
+
+/* ---------- どうぐ ---------- */
+const rnd = n => Math.floor(Math.random() * n);
+const pick = a => a[rnd(a.length)];
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function sampleUnique(src, n, bad){
+  const out = [], seen = new Set(bad);
+  for (const x of shuffle(src)) { if (out.length >= n) break; if (!seen.has(x)) { seen.add(x); out.push(x); } }
+  return out;
+}
+const $ = s => document.querySelector(s);
+const pct = b => `left:${b[0] / 5}%;top:${b[1] / 7}%;width:${(b[2] - b[0]) / 5}%;height:${(b[3] - b[1]) / 7}%;`;
+
+/* ---------- まちがいの せんたくし ---------- */
+function nameChoices(ans, c){
+  const same = ALL_NAMES.filter(n => isEx(n) === isEx(ans) && baseOf(n) !== baseOf(ans));
+  const sameType = same.filter(n => C.find(x => x.name === n)?.type === c.type);
+  const pool = sameType.length >= 6 && Math.random() < 0.6 ? sameType : same;
+  return sampleUnique(pool, 3, [ans]);
+}
+function numChoices(ans, step, min){
+  const cands = [];
+  for (let k = 1; k <= 6; k++) { cands.push(ans + k * step); if (ans - k * step >= min) cands.push(ans - k * step); }
+  const near = shuffle(cands.slice(0, 6));
+  return near.slice(0, 3);
+}
+function dmgChoices(ans){
+  const m = String(ans).match(/^(\d+)(.*)$/), n = +m[1], suf = m[2];
+  const step = n >= 100 ? 20 : 10;
+  return numChoices(n, step, 10).map(v => v + suf);
+}
+function evoChoices(ans, c){
+  const others = ALL_NAMES.filter(n => !isEx(n) && n !== ans && n !== baseOf(c.name));
+  const sameType = others.filter(n => C.find(x => x.name === n)?.type === c.type);
+  return sampleUnique(sameType.length >= 6 ? sameType : others, 3, [ans]);
+}
+
+/* ---------- 1もん つくる ---------- */
+function makeQuestion(used, kindsOn){
+  const kinds = Object.keys(KINDS).filter(k => kindsOn.has(k) && POOL[k].length);
+  let total = kinds.reduce((s, k) => s + KINDS[k].w, 0), r = Math.random() * total, kind = kinds[0];
+  for (const k of kinds) { r -= KINDS[k].w; if (r < 0) { kind = k; break; } }
+  let p, tries = 0;
+  do { p = pick(POOL[kind]); } while (used.has(p.c.id) && tries++ < 50);
+  used.add(p.c.id);
+  const c = p.c; let q, ans, wrong, masks, disp = x => x;
+  switch (kind) {
+    case "name": q = "かくれている ポケモンの なまえは？"; ans = c.name; wrong = nameChoices(ans, c); masks = [c.nbox]; break;
+    case "hp":   q = "かくれている HPは いくつ？"; ans = c.hp; wrong = numChoices(ans, 10, 30); masks = [c.hbox]; disp = x => "HP " + x; break;
+    case "type": q = "この ポケモンの タイプは？"; ans = c.type; wrong = sampleUnique([...TYPES.keys()], 3, [ans]); masks = [TYPE_BOX]; disp = x => TYPES[x]; break;
+    case "stage":
+      q = "この ポケモンは「たね」？「しんか」？"; ans = c.stage; wrong = [0, 1, 2].filter(x => x !== ans);
+      masks = [STAGE_BOX].concat(c.stage > 0 ? [c.ebox || [88, 60, 330, 84], PORTRAIT_BOX] : []); disp = x => STAGES[x]; break;
+    case "atk":  q = "かくれている ワザの なまえは？"; ans = p.a.name; wrong = sampleUnique(ALL_ATKS, 3, [ans]); masks = [p.a.nbox]; break;
+    case "dmg":
+      q = p.a.name && p.a.sure ? `ワザ「${p.a.name}」の いりょくは？` : "かくれている ワザの いりょくは？";
+      ans = p.a.dmg; wrong = dmgChoices(ans); masks = [p.a.dbox]; break;
+    case "evo":  q = "この ポケモンの しんかまえは？"; ans = c.evo; wrong = evoChoices(ans, c); masks = [c.ebox, PORTRAIT_BOX]; break;
+  }
+  const choices = shuffle([ans, ...wrong]);
+  return { kind, c, q, ans, choices, masks, disp };
+}
+
+/* ---------- きろく ---------- */
+const STORE = "pokepoke-quiz-v1";
+let rec = { total:0, correct:0, kinds:Object.keys(KINDS) };
+try { rec = Object.assign(rec, JSON.parse(localStorage.getItem(STORE)) || {}); } catch (e) {}
+function save(){ try { localStorage.setItem(STORE, JSON.stringify(rec)); } catch (e) {} }
+function drawStamp(){ $("#stamp").textContent = `🌟 せいかい ${rec.correct}もん`; }
+
+function speak(text){
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text); u.lang = "ja-JP"; u.rate = 0.9;
+    const v = speechSynthesis.getVoices().find(v => v.lang.startsWith("ja")); if (v) u.voice = v;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+
+/* ---------- がめん ---------- */
+let round = null;
+
+function drawStart(){
+  const on = new Set(rec.kinds);
+  $("#main").innerHTML = `
+    <div class="panel">
+      <div class="big">🃏</div>
+      <h2>カードの かくれた ところを あてよう！</h2>
+      <p>カードの 一部が かくれて いるよ。<br>4つの なかから こたえを えらんでね。（1かい ${PER_ROUND}もん）</p>
+      <div class="kinds">
+        ${Object.entries(KINDS).map(([k, v]) => `<label><input type="checkbox" id="k_${k}" ${on.has(k) ? "checked" : ""}> ${v.label}</label>`).join("")}
+      </div>
+      <p style="font-size:13px">カード ${C.length}まい から しゅつだい</p>
+      <button class="next" id="startBtn">スタート ▶</button>
+    </div>`;
+  $("#startBtn").onclick = () => {
+    const kinds = Object.keys(KINDS).filter(k => $("#k_" + k).checked);
+    rec.kinds = kinds.length ? kinds : Object.keys(KINDS); save();
+    startRound();
+  };
+}
+
+function startRound(){
+  const used = new Set(), on = new Set(rec.kinds);
+  round = { qs:Array.from({ length:PER_ROUND }, () => makeQuestion(used, on)), i:0, res:[] };
+  drawQ();
+}
+
+function drawQ(){
+  const Q = round.qs[round.i];
+  const dots = round.qs.map((_, i) => `<i class="${round.res[i] === true ? "ok" : round.res[i] === false ? "ng" : i === round.i ? "now" : ""}"></i>`).join("");
+  $("#main").innerHTML = `
+    <div class="dots">${dots}</div>
+    <div class="qhead">
+      <span class="kind">${KINDS[Q.kind].label}</span>
+      <span class="qno">${round.i + 1} / ${PER_ROUND}もん</span>
+      <button class="speak" id="say">🔊 よんで</button>
+    </div>
+    <p class="q">${Q.q}</p>
+    <div class="play">
+      <div class="cardwrap" id="cw">
+        <img src="img/l${Q.c.id}.webp" alt="ポケモンカード">
+        ${Q.masks.filter(Boolean).map(b => `<div class="mask" style="${pct(b)}">？</div>`).join("")}
+      </div>
+      <div>
+        <div class="choices">
+          ${Q.choices.map((x, i) => `<button class="choice" data-i="${i}"><span class="mk">${i + 1}</span>${Q.kind === "type" ? `<span class="dot" style="background:${TYPE_COLOR[x]}"></span>` : ""}${Q.disp(x)}</button>`).join("")}
+        </div>
+        <div id="res"></div>
+      </div>
+    </div>`;
+  $("#say").onclick = () => speak(Q.q.replace(/[「」]/g, "") + "　" + Q.choices.map((x, i) => `${i + 1}ばん、${Q.disp(x)}`).join("。"));
+  document.querySelectorAll(".choice").forEach(b => b.onclick = () => answer(+b.dataset.i));
+}
+
+function answer(i){
+  const Q = round.qs[round.i], ok = Q.choices[i] === Q.ans, rightI = Q.choices.indexOf(Q.ans);
+  round.res[round.i] = ok; rec.total++; if (ok) rec.correct++; save(); drawStamp();
+  document.querySelectorAll(".choice").forEach((b, k) => {
+    b.disabled = true;
+    if (k === rightI) b.classList.add("right"); else if (k === i) b.classList.add("wrong");
+  });
+  document.querySelectorAll(".mask").forEach(m => { m.classList.add("open"); m.insertAdjacentHTML("afterend", `<div class="hl" style="${m.getAttribute("style")}"></div>`); });
+  const last = round.i === PER_ROUND - 1;
+  let extra = "";
+  if (Q.kind === "stage" && Q.c.stage > 0 && Q.c.evo) extra = `（${Q.c.evo}から しんかするよ）`;
+  $("#res").innerHTML = `
+    <p class="judge ${ok ? "ok" : "ng"}">${ok ? "🎉 せいかい！" : "おしい！"}</p>
+    <p class="answer">こたえ：<b>${Q.disp(Q.ans)}</b>${extra}</p>
+    <p class="answer" style="font-size:15px;color:#6d665c">この カードは「${Q.c.name}」</p>
+    <button class="next" id="nextBtn">${last ? "けっかを みる ▶" : "つぎの もんだい ▶"}</button>`;
+  $("#nextBtn").onclick = () => { if (last) drawResult(); else { round.i++; drawQ(); } };
+  $("#res").scrollIntoView({ behavior:"smooth", block:"nearest" });
+}
+
+function drawResult(){
+  const n = round.res.filter(Boolean).length;
+  const face = n === PER_ROUND ? "👑" : n >= 8 ? "🌟" : n >= 5 ? "😊" : "🌱";
+  $("#main").innerHTML = `
+    <div class="panel">
+      <div class="big">${face}</div>
+      <h2>${PER_ROUND}もん ちゅう ${n}もん せいかい！</h2>
+      <p>${n === PER_ROUND ? "ぜんもん せいかい！ ポケモンはかせだね！" : "カードを みなおして みよう。"}</p>
+      <ul class="review">
+        ${round.qs.map((Q, i) => `<li><img src="img/l${Q.c.id}.webp" alt=""><span class="${round.res[i] ? "o" : "x"}">${round.res[i] ? "○" : "×"}</span><small>${KINDS[Q.kind].label}：${Q.disp(Q.ans)}</small></li>`).join("")}
+      </ul>
+      <button class="next" id="again">もう ${PER_ROUND}もん ▶</button>
+      <button class="next sub" id="home">しゅるいを えらぶ</button>
+    </div>`;
+  $("#again").onclick = startRound;
+  $("#home").onclick = drawStart;
+}
+
+drawStamp();
+drawStart();
+</script>
+</body>
+</html>
